@@ -1,4 +1,8 @@
-"""Entry point for the WWM guild manager application."""
+"""Entry point for the WWM guild manager application.
+
+This is a lightweight bootstrap that will later delegate to the GUI layer.
+For now it validates inputs and prints the intended startup mode.
+"""
 
 from __future__ import annotations
 
@@ -6,12 +10,6 @@ import argparse
 from dataclasses import dataclass
 from pathlib import Path
 import sys
-
-from PySide6 import QtWidgets
-
-from config import AppSettings, DEFAULT_CONFIG_PATH, load_settings
-from core.exporter import import_records
-from ui.main_window import MainWindow
 
 
 @dataclass(frozen=True)
@@ -25,7 +23,7 @@ class AppConfig:
 
 def parse_args(argv: list[str]) -> AppConfig:
     parser = argparse.ArgumentParser(
-        description="WWM Guild Manager",
+        description="WWM Guild Manager (bootstrap)",
     )
     parser.add_argument(
         "--config",
@@ -62,33 +60,6 @@ def validate_paths(config: AppConfig) -> None:
         raise FileNotFoundError(f"CSV not found: {config.csv_path}")
 
 
-def resolve_settings(config: AppConfig) -> AppSettings:
-    config_path = config.config_path or DEFAULT_CONFIG_PATH
-    return load_settings(config_path)
-
-
-def resolve_csv_path(config: AppConfig, settings: AppSettings) -> Path | None:
-    if config.create_new:
-        return None
-    if config.csv_path:
-        return config.csv_path
-    if settings.default_csv_path and settings.default_csv_path.exists():
-        return settings.default_csv_path
-    return None
-
-
-def run_gui(settings: AppSettings, csv_path: Path | None) -> int:
-    app = QtWidgets.QApplication(sys.argv)
-    window = MainWindow(settings)
-
-    if csv_path:
-        records = import_records(csv_path)
-        window.load_records(records)
-
-    window.show()
-    return app.exec()
-
-
 def main(argv: list[str] | None = None) -> int:
     argv = argv if argv is not None else sys.argv[1:]
     config = parse_args(argv)
@@ -99,9 +70,21 @@ def main(argv: list[str] | None = None) -> int:
         print(exc, file=sys.stderr)
         return 2
 
-    settings = resolve_settings(config)
-    csv_path = resolve_csv_path(config, settings)
-    return run_gui(settings, csv_path)
+    if config.create_new:
+        mode = "new"
+    elif config.csv_path:
+        mode = "open"
+    else:
+        mode = "default"
+
+    print("WWM Guild Manager bootstrap")
+    print(f"Startup mode: {mode}")
+    if config.config_path:
+        print(f"Config: {config.config_path}")
+    if config.csv_path:
+        print(f"CSV: {config.csv_path}")
+    print("GUI implementation will be added once the folder structure exists.")
+    return 0
 
 
 if __name__ == "__main__":
